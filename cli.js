@@ -17,19 +17,17 @@ const templates={
 
 
 
-var program = require('commander');
-var download = require('download-git-repo');
-var handlebars = require('handlebars');
-var inquirer = require('inquirer');
+const program = require('commander');
+const download = require('download-git-repo');
+const handlebars = require('handlebars');
+const inquirer = require('inquirer');
+const ora = require('ora');
+const chalk = require('chalk');
 
-var fs = require('fs');
+const fs = require('fs');
 
 program
     .version('0.1.0')
-    // .option('-p, --peppers', 'Add peppers')
-    // .option('-P, --pineapple', 'Add pineapple')
-    // .option('-b, --bbq-sauce', 'Add bbq sauce')
-    // .option('-c, --cheese [type]', 'Add the specified type of cheese [marble]', 'marble')
 
 program
     .command('list')
@@ -46,15 +44,16 @@ program
     .command('init <template> <project>')
     .description('初始化模板')
     .action(function(template,project){
+        const spinner = ora('正在下载模板...').start();
         var downloadUrl = templates[template].downloadUrl;
         download(downloadUrl,project,(err) => {
             if(err){
+                spinner.fail();
                 console.log(err);
-                console.log("下载失败");
+                console.log(chalk.red('初始化模板失败'));
             }else{
-                console.log("下载成功");
+                spinner.succeed();
                 // 采集用户输入信息,通过模板引擎来生成package.json
-
                 inquirer
                     .prompt([/* Pass your questions in here */
                         {
@@ -75,42 +74,20 @@ program
                     ])
                     .then(answers => {
                         // Use user feedback for... whatever!!
-                        console.log(answers);
-                        const packageContent = fs.readFileSync(`$(project)/package.json`,'utf8');
-                        handlebars.compile(packageContent)(answers) // 编译读取到的package.json模板并填充数据
+                        let packageContent = fs.readFileSync(`${project}/package.json`,'utf8');
+                        packageContent = handlebars.compile(packageContent)(answers) // 编译读取到的package.json模板并填充数据
+                        fs.writeFileSync(`${project}/package.json`,packageContent);
+                        console.log(chalk.green('初始化模板成功'));
                     });
+
+
             }
         })
     });
 
-/*program
-    .command('exec <cmd>')
-    .alias('ex')
-    .description('execute the given remote cmd')
-    .option("-e, --exec_mode <mode>", "Which exec mode to use")
-    .action(function(cmd, options){
-        console.log('exec "%s" using %s mode', cmd, options.exec_mode);
-    }).on('--help', function() {
-    console.log('');
-    console.log('Examples:');
-    console.log('');
-    console.log('  $ deploy exec sequential');
-    console.log('  $ deploy exec async');
-});*/
 
-/*
-program
-    .command('*')
-    .action(function(env){
-        console.log('deploying "%s"', env);
-    });
-*/
 
 program.parse(process.argv);
 
 
-/*console.log('you ordered a pizza with:');
-if (program.peppers) console.log('  - peppers');
-if (program.pineapple) console.log('  - pineapple');
-if (program.bbqSauce) console.log('  - bbq');
-console.log('  - %s cheese', program.cheese);*/
+
